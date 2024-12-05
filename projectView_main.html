@@ -1,0 +1,931 @@
+
+{% load static %}
+
+<!-- 從setting 載入 目前static 檔案夾位址 (STATIC_URL = 'static/') 紀錄 css image java scrpit 等設置 -->
+
+<!DOCTYPE html>
+<head>
+    <!-- https://getbootstrap.com/docs/4.6/getting-started/introduction/ -->
+    <title>Project Viewer</title>
+
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- <link rel="shortcut icon" href="/favicon.ico"/> -->
+    <!-- <link rel="bookmark" href="/favicon.ico"/> -->
+
+    <link  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">    
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+
+    <!-- local css-->
+    <link rel="stylesheet" type="text/css" href="{% static '/css/projectViewer_main.css' %} " >
+    <link rel="stylesheet" type="text/css" href="{% static '/css/projectViewer_milestone.css' %} " >
+    <!-- <script src="/static/js/projectViewer.js"></script> -->
+    <script src="{% static '/js/projectViewer_main.js' %}"></script>
+    <!-- <script src="{% static '/js/projectViewer_milestone.js' %}"></script> -->
+    {% comment %} <script src="{% static '/js/actionDoneComment.js' %}"></script> {% endcomment %}
+</head>
+
+<body>
+
+
+    {% comment %} {% include 'navbar.html' %}  {% endcomment %}
+    <!-- 從 views.py 傳 form 過來-->
+    {% block content %} 
+
+    
+    {% csrf_token %}
+        <div class="container-main">
+            
+        <!-- 左側  Projectselect -->
+            <div class="left-pane" id="projectSelectPanel">
+
+                <!-- 系統下拉選單 與 程式版本-->
+                <div style="display: flex; align-items: center;">
+                    <div class="dropdown" >
+                        
+                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            
+                            {% if userType <= 1 %}  <!-- Acer -->
+                                <li><button class="dropdown-item" type="button" onclick="submitExcelExport('all')">Export All to Excel</button></li>
+                                
+
+                            {% elif userType == 7 %} <!-- 'ODM Host'  -->
+                                <li><button class="dropdown-item" type="button" onclick="submitExcelExport('odm')">Export All to Excel</button></li>
+                                
+                            {% endif %}
+
+                            
+                            <li><button class="dropdown-item" type="button" onclick="submitExcelExport('own')">Export Own Projects</button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            
+
+                            {% if userType == 1 %}  <!-- Acer -->
+                                <li><button class="dropdown-item" type="button" onclick="submitExcelRestore()">Restore From Excel</button></li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %} 
+
+                            {% if userType == 1 or userType == 7 %} <!-- Acer or ODM host -->
+                                <li><button class="dropdown-item" type="button" onclick="createNewProject()">Create New Project</button></li>
+                            {% endif %} 
+
+                            {% if userType == 1 or userType == 7 %} <!-- Acer or ODM host --> 
+                                {% if activate_project != 'Select a project' %}
+                                    <li><button class="dropdown-item" type="button" onclick="renameProject(this.form.activate_project.value)">Rename Project</button></li>
+                                    
+
+                                    <li><button class="dropdown-item" type="button" onclick="submitProjectInProgressToggle(this.form.activate_project.value )">Hide/Show Project</button></li>
+                                    
+                                {% endif %} 
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %} 
+
+                            <li><button class="dropdown-item" type="button" onclick="">Exit</button></li>
+                            
+                            <li><button class="dropdown-item" type="button" onclick="logout()">Logout</button></li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-left: 1rem;">
+                        <span style="display:block;">Project Viewer X</span>
+                        <span class="viewer_select_title">Ver. 0.10.02</span>
+                    </div>
+                </div>
+
+                <!-- 隱藏區塊 -->
+                <div id="'userInformation_div">
+                    <div id="'userName_div" style="display:none;">
+                        <span class="viewer_select_title">User Name:</span> 
+                        <span class="project_info_data" id='projectViewer_userNameb'>{{ userName }}<span>
+                    </div>
+                    <div id="'userCompany_div" style="display:none;">
+                        <span class="viewer_select_title">User Company:</span> 
+                        <span class="project_info_data" id='projectViewer_userCompanyB'>{{ userCompany }}<span>
+                    </div>
+
+                    <p><input type= "hidden" name= "userName" value="{{ userName }}" id='projectViewer_userName' readonly autocomplete="username"></p>
+                    <p><input type= "hidden" name= "userCompany" value="{{ userCompany }}" id='projectViewer_userCompany' readonly></p>
+                    <p><input type= "hidden" name= "userType" value="{{ userType }}" id='projectViewer_userType'  ></p>
+                    <p><input type= "hidden" id="changed_element" name="changed_element" value={{changed_element}} ></p>
+                    <p><input type= "hidden" id="userFunctionPIC" name="userFunctionPIC" value={{userFunctionPIC}} ></p>
+                </div>                
+
+                <!-- Menu                       -->
+                <div>
+                    {% if userType <= 1 %} <!-- Acer -->
+                        <!-- User Type: {{userType}} -->
+                        <span class="viewer_select_title">Select ODM:</span> 
+                        <select class="viewerSelect" aria-label="Default select example" selectName="oDM" ></select>
+                        
+                        <span class="viewer_select_title">Select PIC Type:</span> 
+                        <select class="viewerSelect" aria-label="Default select example" selectName="pIC" ></select>
+
+                        <!--  <div style="display: flex; align-items: center; justify-content: space-between;"> </div>-->
+                        <span class="viewer_select_title">Select PIC Member:</span> 
+                            <!-- <div class="viewerCheckbox" selectName="projOnly" label= 'My Project Only' ></div> -->
+
+                        <select class="viewerSelect" selectName="member" ></select>
+
+                    {% elif userType == 7 %} <!-- 'ODM Host'  -->
+                            
+                        <span class="project_info_title">Select PIC Type:</span>
+                        <select class="viewerSelect" aria-label="Default select example" selectName="pIC" ></select>
+                        
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span class="viewer_select_title">Select PIC Member:</span> 
+                            <!-- My Project Only -->
+                            <!-- <div class="viewerCheckbox" selectName="projOnly" label= 'My Project Only' ></div> -->
+                        </div> 
+                        <select class="viewerSelect" aria-label="Default select example" selectName="member" ></select>
+
+                    {% elif userType == 9 %}
+
+                        <div style="display:none">
+                            <span class="project_info_title">Activate_PIC:</span> 
+                            <span class="project_info_data" >{{ userFunctionPIC }}<span>
+                        </div>
+
+                        <div style="display:none">
+                            <span class="project_info_title">Activate_member:</span> 
+                            <span class="project_info_data" >{{ userName }}<span>
+                        </div>
+                    
+                    {% else %}
+                        <p><h1>>ERROR user type incorrect</h1></p>
+                    
+                    {% endif %}
+                </div>
+
+                <hr>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="viewer_select_title">Select Project:</span> 
+
+                    <div class="viewerCheckbox" selectName="prog" label= 'In Progress Projects Only'></div>
+                </div>
+
+                <!-- available_projects -->
+                
+                {% if userType <= 1 %} <!-- Acer -->
+                    <select class="viewerSelect" aria-label="Default select example" selectName="project" ></select>
+
+                {% else %}
+                    <div class="projectSelect projectSelect_3" aria-label="Project selection" id= "activate_project_list">
+                        <input type="hidden" id="activate_project" name="activate_project" value="{{ activate_project }}">
+                        {% for project in available_projects %}
+                            <div class="available_item" onclick="submitForm_projectSelect_3('{{ project }}')" 
+                            style="{% if project == activate_project %}font-weight: bold; background-color: yellow;{% endif %}">
+                                {{ project }}
+                            </div>
+                        {% endfor %}
+                    
+                        {% if activate_member == 'Select a member' %}
+                            {% for project in freeOwner_Projects %}
+                                <div class="free_item" onclick="submitForm_projectSelect_3('{{ project }}')" 
+                                style="{% if project == activate_project %}font-weight: bold; background-color: yellow;{% endif %}">
+                                    {{ project }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    
+                        {% if not inProgress %}
+                            {% for project in hidden_Projects %}
+                                <div class="hidden_item" onclick="submitForm_projectSelect_3('{{ project }}')" 
+                                style="{% if project == activate_project %}font-weight: bold; background-color: yellow;{% endif %}">
+                                    {{ project }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+
+                <div style="display:block;">
+                    <h8>螢幕解析度：</h8>
+                    <span id="screenResolution"></span>
+                    <hr>
+                    <h8>視窗大小：</h8>
+                    <span id="windowSize"></span>
+                    <hr>
+                    <h8>左視窗大小：</h8>
+                    <span id="leftpanelSize"></span>
+                </div>
+                
+                <button onclick="goFullscreen()">全屏顯示 </button>
+                {% comment %} <button id="addNewProjectButton">Add New Project</button>
+                <button onclick="goFullscreen()">Project Hidden Set/Clear</button>
+                <button id="renameProjectButton">Project Rename</button> {% endcomment %}
+                
+                
+
+            </div>
+        <!-- #endregion -->
+        
+            <div class="resizer" id="resizer"></div>
+        
+        <!-- 右邊大框 -->
+            <div class="right-pane" id="rightPane">  
+                <!--  -->
+                {% if True %} <!-- form != None %}  activate_project != "Select a project"-->
+                
+                <div class="upper-level" style="display: flex; flex-direction: row;"> <!-- 上層 4個 info div -->
+                <!-- 1st info_div -->
+                    <div id="info_div1" class="info_div" style="flex:1;">
+                        <!-- dropdown Menu -->
+                        <div style="display: flex; align-items: center;">
+                            <div class="dropdown" >
+                                
+                                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"> </button>
+                                <ul class="dropdown-menu dropdown-menu-dark">
+                                    
+                                    {% if userType <= 1 %}  <!-- Acer -->
+                                        <li><button class="dropdown-item" type="button" onclick="submitExcelExport('all')">Export All to Excel</button></li>
+                                        
+        
+                                    {% elif userType == 7 %} <!-- 'ODM Host'  -->
+                                        <li><button class="dropdown-item" type="button" onclick="submitExcelExport('odm')">Export All to Excel</button></li>
+                                        
+                                    {% endif %}
+        
+                                    
+                                    <li><button class="dropdown-item" type="button" onclick="submitExcelExport('own')">Export Own Projects</button></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    
+        
+                                    {% if userType == 1 %}  <!-- Acer -->
+                                        <li><button class="dropdown-item" type="button" onclick="submitExcelRestore()">Restore From Excel</button></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                    {% endif %} 
+        
+                                    {% if userType == 1 or userType == 7 %} <!-- Acer or ODM host -->
+                                        <li><button class="dropdown-item" type="button" onclick="createNewProject()">Create New Project</button></li>
+                                    {% endif %} 
+        
+                                    {% if userType == 1 or userType == 7 %} <!-- Acer or ODM host --> 
+                                        {% if activate_project != 'Select a project' %}
+                                            <li><button class="dropdown-item" type="button" onclick="renameProject(this.form.activate_project.value)">Rename Project</button></li>
+                                            
+        
+                                            <li><button class="dropdown-item" type="button" onclick="submitProjectInProgressToggle(this.form.activate_project.value )">Hide/Show Project</button></li>
+                                            
+                                        {% endif %} 
+                                        <li><hr class="dropdown-divider"></li>
+                                    {% endif %} 
+        
+                                    <li><button class="dropdown-item" type="button" onclick="">Exit</button></li>
+                                    
+                                    <li><button class="dropdown-item" type="button" onclick="logout()">Logout</button></li>
+                                </ul>
+                            </div>
+        
+                            <div style="margin-left: 1rem;">
+                                <span style="display:block;">Project Viewer X</span>
+                                <span class="viewer_select_title">Ver. 0.10.02</span>
+                            </div>
+                            
+                        </div>
+
+                        <div>
+                            {% if userType <= 1 %} <!-- Acer -->
+                                <!-- User Type: {{userType}} -->
+                                <div style="display: flex; margin:1px padding:1px;">
+                                    <span class="viewer_select_title" style="max-width: 60px;">Select ODM:</span> 
+                                    <select class="viewerSelect viewerSelect2" aria-label="Default select example" selectName="oDM" ></select>
+                                    <span class="viewer_select_title" style="max-width: 60px; margin-left: 2rem;">Select PIC Type:</span> 
+                                    <select class="viewerSelect viewerSelect2" aria-label="Default select example" selectName="pIC" ></select>
+                                </div>
+                                <div style="display: flex; margin:2px; padding:1px;">
+                                    <span class="viewer_select_title" style="max-width: 60px;">Select PIC Member:</span>         
+                                    <select class="viewerSelect viewerSelect2" aria-label="Default select example" selectName="member" ></select>
+                                </div>
+        
+                            {% elif userType == 7 %} <!-- 'ODM Host'  -->
+                                    
+                                <div style="display: flex; margin:2px; ;">
+                                    <span class="viewer_select_title">Select PIC Type:</span> 
+                                    <select class="viewerSelect" aria-label="Default select example" selectName="pIC" ></select>
+                                </div>
+                                {% comment %} <div style="display: flex; align-items: center; justify-content: space-between;"> {% endcomment %}
+                                <div style="display: flex; margin:2px; ;">
+                                    <span class="viewer_select_title">Select PIC Member:</span> 
+                                    <select class="viewerSelect" aria-label="Default select example" selectName="member" ></select>
+                                </div> 
+        
+                            {% elif userType == 9 %}
+        
+                                <div style="display:none">
+                                    <span class="project_info_title">Activate_PIC:</span> 
+                                    <span class="project_info_data" >{{ userFunctionPIC }}<span>
+                                </div>
+        
+                                <div style="display:none">
+                                    <span class="project_info_title">Activate_member:</span> 
+                                    <span class="project_info_data" >{{ userName }}<span>
+                                </div>
+                            
+                            {% else %}
+                                <p><h1>>ERROR user type incorrect</h1></p>
+                            
+                            {% endif %}
+                        </div>
+        
+
+                        <div style="display: flex; margin:2px; padding:2px;">
+                            <span class="viewer_select_title" style="max-width: 60px;">Select Project:</span> 
+
+                        <!-- available_projects -->
+                        
+                        {% if userType <= 1 %} <!-- Acer -->
+                            <select class="viewerSelect viewerSelect2" aria-label="Default select example" selectName="project" ></select>
+                            <div class="viewerCheckbox" selectName="prog"  style="display:block; margin-left: 1rem;"></div>
+                            <span class="viewer_select_title" style="max-width: 100px;">In Progress Projects Only</span>
+                        {% else %}
+                            <div class="projectSelect projectSelect_3" aria-label="Project selection" id= "activate_project_list">
+                                <input type="hidden" id="activate_project" name="activate_project" value="{{ activate_project }}">
+                                {% for project in available_projects %}
+                                    <div class="available_item" onclick="submitForm_projectSelect_3('{{ project }}')" 
+                                    style="{% if project == activate_project %}font-weight: bold; background-color: yellow;{% endif %}">
+                                        {{ project }}
+                                    </div>
+                                {% endfor %}
+                            
+                                {% if activate_member == 'Select a member' %}
+                                    {% for project in freeOwner_Projects %}
+                                        <div class="free_item" onclick="submitForm_projectSelect_3('{{ project }}')" 
+                                        style="{% if project == activate_project %}font-weight: bold; background-color: yellow;{% endif %}">
+                                            {{ project }}
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            
+                                {% if not inProgress %}
+                                    {% for project in hidden_Projects %}
+                                        <div class="hidden_item" onclick="submitForm_projectSelect_3('{{ project }}')" 
+                                        style="{% if project == activate_project %}font-weight: bold; background-color: yellow;{% endif %}">
+                                            {{ project }}
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        </div>
+                    </div> 
+                    
+                    
+
+                <!-- 2nd info_div -->
+                    <div id="info_div2" class="info_div" style="flex:3; align-self: center; overflow-x: auto; width: 100%; height: 100%; white-space: nowrap;">
+                        <div class= "yMilestoneSchedule" data-action="generateMilestoneButtons" type="line"></div>
+                        
+                    </div> 
+                    
+
+                </div>
+
+                <!-- 下層 -->
+                <div class="lower-level">
+
+                    <div class="right">
+                        <!-- 下層 右側  tabs -->
+                        <div class="right-upper-tabs">
+                            <div id="tabs-div" class="tab_css" source-data="{'Update':'', 'Project Info':'', 'Schedule':'', 'WLAN':'', 'WWAN':''}">
+                                <!-- tabs-buttons-div -->
+                                <div id="tabs-buttons-div" class="tabs-buttons-div" style="align-items: center;" >
+                                    <div id ="tabs-button-div" style="min-width: 13%;">
+                                        <div class="y4LineEdit" title="Project Name" unit="" placeholder="Project Name" changeditem="projectName"  ></div>
+                                    </div>
+                                    <div style="min-width: 13%;">
+                                        <div class="y4Combobox" title="Project Stage" unit="" placeholder="Project Stage" changeditem="projectStage" category = "Stage"> </div>
+                                    </div>
+
+                                    <!-- 直接產生8個 button -->
+                                    <input id="tab-update" class="tab_button" type="radio" name="tab" checked="checked"/>
+                                    <label for="tab-update">Update</label>
+
+                                    <input id="tab-projectInfo" class="tab_button" type="radio" name="tab" />
+                                    <label for="tab-projectInfo">ProjectInfo</label>
+
+                                    <input id="tab-1" class="tab_button" type="radio" name="tab" />
+                                    <label for="tab-1">Schedule</label>
+                        
+                                    {% comment %} <input id="tab-2" class="tab_button" type="radio" name="tab"/>
+                                    <label for="tab-2">ME/RF_config</label> {% endcomment %}
+                        
+                                    <input id="tab-3" class="tab_button" type="radio" name="tab"/>
+                                    <label for="tab-3">WLAN</label>
+                        
+                                    {% comment %} <input id="tab-4" class="tab_button" type="radio" name="tab"/>
+                                    <label for="tab-4">WLAN</label> {% endcomment %}
+                        
+                                    <input id="tab-5" class="tab_button" type="radio" name="tab"/>
+                                    <label for="tab-5" >WWAN</label>
+                                    <!-- <label for="tab-5" {% if form.wWAN_OTASpec.value == "Not Support" %} style="display:none;" {% endif %}>WWAN</label> -->
+
+                                    {% comment %} <input id="tab-6" class="tab_button" type="radio" name="tab"/>
+                                    <label for="tab-6" >WWAN</label> {% endcomment %}
+                                    <!-- <label for="tab-6" {% if form.wWAN_OTASpec.value == "Not Support" %} style="display:none;" {% endif %}>WWAN</label> -->
+                                </div>
+                            
+                                <!-- tab-content-div -->
+                                <div class="tab-content-div" style="flex-grow:1;">
+                                <!-- 迭代 source-data 中的項目生成相應的頁籤內容 -->
+
+                                <!-- TABupdate 打包區塊 -->
+                                    <div id="tab-content-update" class="tab_page" style="display: block;  ">
+                                        <div class = "tab-blocks" > <!-- style="display: flex; flex-direction: row; height:100%;" -->
+                                            <div id="tab-content-update-1" class = "tab-block" >
+                                                <div  class="yTextArea" changeditem="update" style="height: 100%;">
+                                                    <span class = "div_title">Status Update</span>
+                                                </div>
+                                            </div>
+
+                                            <div id="tab-content-update-2" class = "tab-block">
+                                                <div class="yActionDoneList" changeditem="actionList" style="height: 100%;" >
+                                                        <span class = "div_title">CheckList</span>
+                                                </div>
+                                            </div>
+
+                                            <div id="tab-content-update-3" class = "tab-block" style="display:flex; flex-direction: column;">
+                                                <div class="yActionDoneList" changeditem="doneList" style="height: 48%;">
+                                                    <span class = "div_title">Done History </span>
+                                                </div>
+                                                <div  class="yTextArea" changeditem="comment" style="height: 47%;">
+                                                    <span class = "div_title">Design Comment</span>
+                                                </div>
+
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                <!-- TABupdate 打包區塊 end -->
+
+                                <!-- TAB0 打包區塊 -->
+                                    
+                                    <div id="tab-content-projectInfo" class="tab_page" >
+                                        
+                                        <div class = "tab-blocks" >
+                                            <div class = "tab-block" >
+                                                    Information
+                                                    {% if userType <= 1 %}  <!-- Acer -->
+                                                    <div class="y4LineEdit" title="ODM Name" unit="" placeholder="ODM Name" changeditem="oDM" name = "oDM_name"></div>
+                                                    {% endif %}
+                                                    {% comment %} <div class="y4LineEdit" title="Project Name" unit="" placeholder="Project Name" changeditem="projectName" ></div> {% endcomment %}
+                                                    <div class="y4LineEdit" title="ODM Project Name" unit="" placeholder="ODM Project Name" changeditem="odmProjectName" ></div>
+                                                    <div class="y4Combobox" title="Acer series" unit="" placeholder="input Acer series" changeditem="acerSeries" category = 'Series'></div>
+                                                    <div class="y4Combobox" title="O.S." unit="" placeholder="input O.S." changeditem= 'oS' category ="OS" ></div>
+                                                    <div class="y4LineEdit" title="Panel Size" unit="inch" placeholder="input Panel Size" changeditem="panelSize"></div>
+                                                    <div class="y4Combobox" title="Form Factor" unit="" placeholder="input Form Factor" changeditem="formFactor" category="FormFactor" ></div>
+                                                    <div class="y4Combobox" title="GPU Design" unit="" placeholder="GPU Design" changeditem="gPUDesign" category ='GPU'></div>
+                                                    <br>
+                                                    <div class="ySelectList" title="Platform" unit="" placeholder="Platform" changeditem="platformList" > </div>
+                                            </div>
+                                            <div class = "tab-block" >
+                                                    PIC 
+                                                    <div class="y4Combobox" title="Acer RF PIC" unit="" placeholder="Acer RF PIC" changeditem="Acer_RF_PIC" ></div>
+                                                    <div class="y4Combobox" title="Acer Ant. PIC" unit="" placeholder="Acer Antenna PIC" changeditem="Acer_Antenna_PIC" ></div>
+                                                    <div class="y4Combobox" title="ODM RF PIC" unit="" placeholder="ODM RF PIC" changeditem="ODM_RF_PIC" ></div> 
+                                                    <div class="y4Combobox" title="ODM RF Proxy" unit="" placeholder="ODM RF Proxy" changeditem="ODM_RF_Proxy" ></div>
+                                                    <div class="y4Combobox" title="ODM Ant. PIC" unit="" placeholder="ODM Antenna PIC" changeditem="ODM_Antenna_PIC" ></div>
+                                                    
+                                                    <br>
+                                                    ME Design
+                                                    <div class="y4Combobox" title="ME_A Chassis" unit="" placeholder="ME_A Chassis" changeditem="chassisME_A" category = 'ME'></div> 
+                                                    <div class="y4Combobox" title="ME_B Chassis" unit="" placeholder="ME_B Chassis" changeditem="chassisME_B" category = 'ME'></div>
+                                                    <div class="y4Combobox" title="ME_C Chassis" unit="" placeholder="ME_C Chassis" changeditem="chassisME_C" category = 'ME'></div>
+                                                    <div class="y4Combobox" title="ME_D Chassis" unit="" placeholder="ME_D Chassis" changeditem="chassisME_D" category = 'ME'></div>
+                                            </div>
+                                            <div class = "tab-block" >
+                                                    RF Spec Configure                                                
+                                                    <div class="y4Combobox" title="Wi-Fi_ThroughSpec" unit="" placeholder="Wi-Fi_ThroughSpec" changeditem="wiFi_ThroughSpec" category ='WiFiTput'></div>
+                                                    <br>
+                                                    <div class="y4Combobox" title="Wi-Fi_HeavyloadLevel" unit="" placeholder="Wi-Fi_HeavyloadLevel" changeditem="wiFi_HeavyloadLevel" category ='WiFiLv'></div>
+                                                    <br>
+                                                    <div class="y4Combobox" title="WWAN OTA Spec" unit="" placeholder="WWAN OTA Spec" changeditem="wWAN_OTASpec" category ='WWAN_OTASpec'></div>
+                                            </div>
+                                        </div> 
+                                    </div>
+                                <!-- TAB0 打包區塊 end -->
+                                
+                                <!-- TAB1 打包區塊 **************** -->
+                                    <div id="tab-content-1" class="tab_page" >
+                                        <div class="scheduleType">
+                                            <div class= "y4Combobox" title="Schedule Type" unit="" placeholder="Schedule Type"  changeditem="scheduleType"  category="SchType" > </div>
+                                        </div>
+                                        <div class= "yMilestoneSchedule" data-action="generateMilestoneButtons" type="table"></div>  
+                                    </div>
+                                <!-- TAB1 打包區塊 end -->
+                                
+                                <!-- TAB2 打包區塊 start **************** -->            
+                                    <div id="tab-content-2" class="tab_page">
+                                        
+                                    </div>
+                                <!-- TAB2 打包區塊 end -->
+                                
+                                <!-- TAB3 WLAN Ant打包區塊 start **************** -->
+                                    <div id="tab-content-3"class="tab_page">
+                                        <div class = "tab-blocks" >
+                                            <div class = "tab-block" >
+                                                    WLAN Main Antenna
+                                                    <div class="y4Combobox" title="Area" unit="" placeholder="wiFi_Main_AntennaArea" changeditem="wiFi_Main_AntennaArea" parentIdLevel="3"  category ='AntLoc'></div>
+                                                    <div class="y4Combobox" title="Position" unit="" placeholder="wiFi_Main_AntennaPosition" changeditem="wiFi_Main_AntennaPosition"  category ='AntPos'></div>
+                                                    <div class="y4Combobox" title="Material" unit="" placeholder="wiFi_Main_AntennaMaterial" changeditem="wiFi_Main_AntennaMaterial"  category ='AntDesign'></div>
+                                                    <div class="y4Combobox" title="Environent" unit="" placeholder="Wi-Fi_Main_AntennaDesignDescription" changeditem="wiFi_Main_AntennaDesignDescription"  category ='AntEnv'></div>
+                                                    <hr>
+
+                                                    WLAN Aux Antenna
+                                                    <div class="y4Combobox" title="Area" unit="" placeholder="wiFi_Aux_AntennaArea" changeditem="wiFi_Aux_AntennaArea"  category ='AntLoc'></div>
+                                                    <div class="y4Combobox" title="Position" unit="" placeholder="wiFi_Aux_AntennaPosition" changeditem="wiFi_Aux_AntennaPosition" category ='AntPos'></div>
+                                                    <div class="y4Combobox" title="Material" unit="" placeholder="wiFi_Aux_AntennaMaterial" changeditem="wiFi_Aux_AntennaMaterial" category ='AntDesign'></div>
+                                                    <div class="y4Combobox" itle="Environent" unit="" placeholder="Wi-Fi_Aux_AntennaDesignDescription" changeditem="wiFi_Aux_AntennaDesignDescription"  category ='AntEnv' ></div>
+                                                    <hr>
+            
+
+                                                    <div class="y4Combobox" title="Wi-Fi_PowerSensor" unit="" placeholder="Wi-Fi_PowerSensor" changeditem="wiFi_PowerSensor" category = 'Sensor'></div>
+                                                    <div class="y4LineEdit" title="NB mode Human Body Distance(mm)" unit="mm" placeholder="" changeditem="wiFi_AntHumanBodyDistance_NB"></div>
+                                                    <div class="y4LineEdit" title="TB mode Human Body Distance(mm)" unit="mm" placeholder="" changeditem="wiFi_AntHumanBodyDistance_TB"></div>
+                                            </div>
+                                            <div class = "tab-block" >
+                                                    WLAN Module
+                                                    <div class="y4Combobox" title="Wi-Fi_Module Interface" unit="" placeholder="Wi-Fi_Module Interface" changeditem="wiFi_ModuleInterface" category = 'ModuleIF'></div>
+                                                    <div class="y4Combobox" title="Wi-Fi_Module Form Factor" unit="" placeholder="Wi-Fi_Module Form Factor" changeditem="wiFi_ModuleFormFactor" category = 'ModuleFF'></div>
+                                                    <div class="y4Combobox" title="Wi-Fi_SAR Regulatory" unit="" placeholder="Wi-Fi_SAR Regulatory" changeditem="wiFi_SARRegulatory" category ='SARReg'></div>
+                                                    <div class="ySelectList" title="Wi-Fi_Module" unit="" placeholder="Wi-Fi_Module" changeditem="wiFi_ModuleList"></div>
+                                                    <hr>
+                                                    WLAN Options
+                                                    <div class="ySelectList" title="Wi-Fi_options" unit="" placeholder="wiFi_options" changeditem="wiFi_options"></div>
+                                            </div>
+                                        </div>
+
+                                        
+
+                        
+                                    </div>
+                                <!-- TAB3 打包區塊 end -->
+                                    
+                                <!-- TAB4 WLAN Module打包區塊 start -->
+                                    <div id="tab-content-4"class="tab_page" >
+                                        
+                                    </div>
+
+                                <!-- TAB4 打包區塊 end -->
+                                    
+                                <!-- TAB5 打包區塊 start **************** -->
+                                    <div id="tab-content-5" class="tab_page">
+                                        <div class = "tab-blocks" >
+                                            <div class = "tab-block" >
+                                                {% comment %} <div style="flex:1; height: 100%; background-color: lightgray; padding: 5px; box-sizing: border-box;"> {% endcomment %}
+                                                    WWAN Main Antenna
+                                                    <div class="y4Combobox" title="Area" unit="" placeholder="WWAN_Main_AntennaArea" changeditem="wWAN_Main_AntennaArea" parentIdLevel="3" category ='AntLoc'></div>
+                                                    <div class="y4Combobox" title="Position" unit="" placeholder="WWAN_Main_AntennaPosition" changeditem="wWAN_Main_AntennaPosition"  category ='AntPos'></div>
+                                                    <div class="y4Combobox" title="Material" unit="" placeholder="WWAN_Main_AntennaMaterial" changeditem="wWAN_Main_AntennaMaterial"  category ='AntDesign'></div>
+                                                    <div class="y4Combobox" title="Environent" unit="" placeholder="WWAN_Main_AntennaDesignDescription" changeditem="wWAN_Main_AntennaDesignDescription"  category ='AntEnv'></div>
+                                                    <hr>
+                                                    WWAN Aux Antenna
+                                                    <div class="y4Combobox" title="Area" unit="" placeholder="WWAN_Aux_AntennaArea" changeditem="wWAN_Aux_AntennaArea" category ='AntLoc'></div>
+                                                    <div class="y4Combobox" title="Position" unit="" placeholder="WWAN_Aux_AntennaPosition" changeditem="wWAN_Aux_AntennaPosition" category ='AntPos'></div>
+                                                    <div class="y4Combobox" title="Material" unit="" placeholder="WWAN_Aux_AntennaMaterial" changeditem="wWAN_Aux_AntennaMaterial" category ='AntDesign'></div>
+                                                    <div class="y4Combobox" title="Environent" unit="" placeholder="WWAN_Aux_AntennaDesignDescription" changeditem="wWAN_Aux_AntennaDesignDescription" category ='AntEnv'></div>
+                                                    <hr>
+                                                    <div class="y4Combobox" title="WWAN_PowerSensor" unit="" placeholder="WWAN_PowerSensor"  changeditem="wWAN_PowerSensor" category ='Sensor'></div>
+
+                                                {% comment %} </div> {% endcomment %}
+                                            </div>
+                                            <div class = "tab-block" >
+                                                {% comment %} <div style="flex:1; height: 100%; background-color: lightgray; padding: 5px; box-sizing: border-box;"> {% endcomment %}
+                                                    WWAN Module
+                                                    <div class="y4Combobox" title="WWAN_Module Interface" unit="" placeholder="WWAN_Module Interface" changeditem="wWAN_ModuleInterface" category ='ModuleIF'></div>
+                                                    <div class="y4Combobox" title="WWAN_Module Form Factor" unit="" placeholder="WWAN_Module Form Factor" changeditem="wWAN_ModuleFormFactor" category ='ModuleFF'></div>
+                                                    <div class="ySelectList"  title="WWAN_Module" unit="" placeholder="WWAN_Module" changeditem="wwan_ModuleList" ></div>
+                                                {% comment %} </div> {% endcomment %}
+                                            </div>
+                                        </div>
+
+
+                                        <div id="WWAN_Main_Ant_div" class= "itemsGroup_div" >
+
+                                        </div>
+                                        <div id="WWAN_RF_Sensor_div" >
+                                            <div class="y4Combobox" title="WWAN_PowerSensor" unit="" placeholder="WWAN_PowerSensor"  changeditem="wWAN_PowerSensor" category ='Sensor'></div>
+                                        </div>
+                                        
+                                    </div>
+                                    
+                                <!-- TAB5 打包區塊 end -->
+                                    
+                                <!-- TAB6 WWAN Module  打包區塊 start **************** -->
+                                    <div id="tab-content-6"class="tab_page">
+                                        <div id='container-WWAN_Module_Spec' class='container-WWAN_Module_Spec' >
+
+                                        </div>
+                                    </div>
+                                <!-- TAB6 打包區塊 end -->
+                                </div>
+                        
+
+                            </div>
+                        </div>
+                        <!-- 下層 右側  done comment-->
+                        {% comment %} <div class="right-lower">
+                            <!-- 下層 右側  done -->
+                            <div id="doneList_Div" class="yActionDoneList" changeditem="doneList">
+                                <span class = div_title>Done / Updated </span>
+                            </div>
+
+                            <!-- 下層 右側  comment-->
+                            <div id="commentDiv" class="yTextArea" changeditem="comment">
+                                <span class = div_title>Comment </span>
+                            </div>
+
+                        </div> {% endcomment %}
+                    </div>
+                </div>
+                {% else %}
+                    <p> Please select a project </p>
+                {% endif %}
+            </div>
+            
+        </div>
+    
+    
+
+    <!-- <div id="editModal" style="display: none;"> -->
+        <!-- 这里可以放置编辑的表单或其他内容 -->
+        <!-- <input type="text" id="editedValue">
+        <button onclick="saveEditedValue()">Save</button>
+    </div> -->
+
+    {% endblock %}
+    
+    <!-- 隱藏的文件上傳表單 -->
+    <form id="uploadForm" method="post" enctype="multipart/form-data" style="display: none;">
+        {% csrf_token %}
+        <input type="file" id="excelFile" name="excel_file" accept=".xlsx, .xls" onchange="fetchUploadExcelFile()">
+    </form> 
+
+    <!-- Modal -->
+    <div class="modal fade" id="dateModal" tabindex="-1" aria-labelledby="dateModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" style="text-align: center;" id="modal-windowTitle">請輸入日期</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                <form id="modal_return_form" onsubmit="return dateModal_ConvertDate()"> <!-- return 用於確定表單是否應該繼續提交。如果 dateModal_ConvertDate() 函數返回 true，表單將繼續提交；如果返回 false，表單則不會提交。 -->
+                    <div class="mb-3">
+                        <div>
+                            <span class="form-label" id="modal-label">請輸入日期：</span>
+                            <input type="text" class="form-control" id="modal-dateInput" placeholder="輸入4或8位數字" autocomplete="off" autofocus>
+                        </div>
+                        <div>
+                            <!-- 藉由 Modal 傳遞的參數 -->
+                            <span class="visually-hidden" id="modal-containerId">Container ID</span>
+                            <span class="visually-hidden" id="modal-title">Title</span>
+                            <span class="visually-hidden" id="modal-subTitle">Subtitle</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="display: none;">確定</button>
+                </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+    <!-- <h5>Our footer</h5>  -->
+    
+
+<!-- -------------------------------- -->
+
+<script>
+
+    const resizer = document.getElementById('resizer');
+    const projectSelectPanel = document.getElementById('projectSelectPanel');
+    const rightPane = document.getElementById('rightPane');
+    let isResizing = false;
+    // 取得上次儲存的寬度值
+    const savedWidth = localStorage.getItem('projectSelectPanelWidth');
+    if (savedWidth) {
+        projectSelectPanel.style.width = savedWidth;
+    }
+
+    resizer.addEventListener('mousedown', (event) => {
+        isResizing = true;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.removeEventListener('mousemove', handleMouseMove);
+            let leftpanelSize = projectSelectPanel.offsetWidth;
+            document.getElementById("leftpanelSize").innerHTML = leftpanelSize;
+        });
+        
+    });
+
+
+//=============================================================================
+    // 獲取螢幕解析度
+    let screenResolution = window.screen.width + " x " + window.screen.height;
+    document.getElementById("screenResolution").innerHTML = screenResolution;
+
+// 獲取視窗大小 =============================================================================
+    function updateWindowSize() {
+        let windowSize = window.innerWidth + " x " + window.innerHeight;
+        document.getElementById("windowSize").innerHTML = windowSize;
+        let leftpanelSize = projectSelectPanel.offsetWidth;
+        document.getElementById("leftpanelSize").innerHTML = leftpanelSize;
+    }
+
+// 初始載入時更新視窗大小
+    updateWindowSize();
+
+// 監聽視窗大小變化事件，並更新顯示
+    window.addEventListener("resize", updateWindowSize);
+
+    
+//=============================================================================
+    var requestMethod = "{{ method|escapejs }}";  // 確保 method 被正確地轉換為 JavaScript 字符串
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+
+        
+
+        
+
+
+        if (requestMethod === 'GET') {
+            // GET 請求時，將伺服器端的資料儲存到 localStorage
+            console.log('requestMethod === GET');
+            //localStorage.clear();
+
+            //==============================================
+            //var activate_update = "{{ activate_Dict_update|yesno:'true,false'|safe }}";
+            save_Dict_To_Local_Storge( {{ ACTIVATE_Dict |safe}}, 'activate');
+            //==============================================
+            var SESSION_update = "{{ SESSION_Dict_update|yesno:'true,false'|safe }}";
+            console.log('SESSION_update:', "{{ SESSION_Dict_update|yesno:'true,false'|safe }}");
+            // 檢查 session_dict_update, 如 true 便依照 SESSION_Dict 內容依序更新到 localStorage
+            if (SESSION_update === 'true'){
+                console.log('955 SESSION update!!', SESSION_update);
+                save_Dict_To_Local_Storge( {{ SESSION_Dict |safe}}, 'SESSION');
+                }
+            //==============================================
+            var serverVersion = "{{ CATEGORY_Version }}";
+            checkAndUpdateCategoryContent(serverVersion); // 檢查並更新 CATEGORY_content 的函數
+            save_Dict_To_Local_Storge( {{ CATEGORIES |safe}}, 'CATEGORIES');
+            //==============================================
+
+        }else if (requestMethod === 'POST') {
+            // POST 請求時，從 localStorage 讀取資料
+            console.log('requestMethod === POST');
+            const availableODMs = localStorage.getItem('availableODMs');
+            const availableAcerRFPICList = localStorage.getItem('Acer_RF_PIC');
+            const moreAcerRFPICList = localStorage.getItem('more_Acer_RF_PIC');
+            const availableAcerAntennaPICList = localStorage.getItem('Acer_Antenna_PIC');
+            const moreAcerAntennaPICList = localStorage.getItem('more_Acer_Antenna_PIC');
+            const availableWlanModuleList = localStorage.getItem('availableWlanModuleList');
+            const moreWlanModuleList = localStorage.getItem('moreWlanModuleList');
+            const availableWwanModuleList = localStorage.getItem('availableWwanModuleList');
+            const moreWwanModuleList = localStorage.getItem('moreWwanModuleList');
+            const availablePlatformList = localStorage.getItem('availablePlatformList');
+            const morePlatformList = localStorage.getItem('morePlatformList');
+            const available_oDM_PIC_dict = localStorage.getItem('available_oDM_PIC_dict');
+            const more_oDM_PIC_dict = localStorage.getItem('more_oDM_PIC_dict');
+            //console.log('availableODMs',availableODMs);
+            //console.log('availableAcerRFPICList',availableAcerRFPICList);
+            //console.log('availableAcerAntennaPICList',availableAcerAntennaPICList);
+            //console.log('available_oDM_PIC_dict',available_oDM_PIC_dict);
+            // 檢查 localStorage 是否有資料
+            if (availablePlatformList && morePlatformList) {
+                const availablePlatforms = JSON.parse(availablePlatformList);
+                const morePlatforms = JSON.parse(morePlatformList);
+
+                console.log('Available Platform List from localStorage:', availablePlatforms);
+                console.log('More Platform List from localStorage:', morePlatforms);
+
+                // 將資料應用到 div 元素
+                document.getElementById('platformSelect').setAttribute('items', JSON.stringify(availablePlatforms));
+                document.getElementById('platformSelect').setAttribute('moreItems', JSON.stringify(morePlatforms));
+
+                // 這裡可以添加更多處理 POST 請求的邏輯
+            } else {
+                console.error('No platform data found in localStorage for POST request.');
+            } 
+        }else{
+            console.error('Error method.');
+        }
+    
+
+
+        // alert("DOMContentLoaded")
+        // 獲取具有特定id的表單元素 如果表單長度大於16 表單內將包含 project data
+        var form = document.getElementById("oDM_Project_View_Formset");
+        if (true){ //form.length >16
+            // alert('form '+form.length)
+
+
+
+
+            const yLineEditDivs = document.querySelectorAll(".y4LineEdit");
+            yLineEditDivs.forEach(createElementsFor_YLineEdit_4);
+
+            //const yComboboxDivs2 = document.querySelectorAll(".y2Combobox");
+            //yComboboxDivs2.forEach(createElementsForYCombobox2);
+
+            //const yComboboxDivs3 = document.querySelectorAll(".y3Combobox");
+            //yComboboxDivs3.forEach(createElementsForYCombobox3);
+
+            const yComboboxDivs4 = document.querySelectorAll(".y4Combobox");
+            yComboboxDivs4.forEach(createElementsFor_YCombobox_4);
+
+            const ySelectListDivs = document.querySelectorAll(".ySelectList");
+            ySelectListDivs.forEach(createElementsFor_YSelectList_4);
+
+            const viewerSelectDivs = document.querySelectorAll(".viewerSelect"); // menu select
+            viewerSelectDivs.forEach(createElement_MenuSelect);
+
+            {% comment %} const viewerSelectDivs2 = document.querySelectorAll(".viewerSelect2"); // menu select
+            viewerSelectDivs.forEach(createElement_MenuSelect); {% endcomment %}
+
+            const yCheckboxDivs = document.querySelectorAll(".viewerCheckbox");
+            yCheckboxDivs.forEach(modifyCheckboxElementsForProjectSelect);
+
+
+        // Milestone schedule 建立
+            const yMilestoneScheduleDivs = document.querySelectorAll(".yMilestoneSchedule");
+            yMilestoneScheduleDivs.forEach(createMilestoneScheduleDiv);
+
+        // Action Done Comment 建立
+            const yActionDoneList = document.querySelectorAll(".yActionDoneList");
+            yActionDoneList.forEach(createElementFor_YActionDoneList);
+
+            const yTextArea = document.querySelectorAll(".yTextArea");
+            yTextArea.forEach(createElementFor_YTextarea);
+            
+            //parseAndRenderDataToTextarea('commentDiv'); //"original-commentData",
+
+        // tab 建立
+            document.querySelectorAll('.tab_button').forEach(function(tabButton) {
+                tabButton.addEventListener('change', function() {
+                    // 隱藏所有 tab_page
+                    document.querySelectorAll('.tab_page').forEach(function(tabContent) {
+                        tabContent.style.display = 'none';
+                    });
+
+                    // 顯示選中的 tab_page
+                    var targetId = this.getAttribute('id').replace('tab-', 'tab-content-');
+
+                    document.getElementById(targetId).style.display = 'block';
+                });        
+            });
+        // function button
+            //document.getElementById('addNewProjectButton').addEventListener('click', addNewProject);
+            //document.getElementById('renameProjectButton').addEventListener('click', renameProject);
+
+        //
+            //var userType = "{{ userType }}"; // 假設這裡有 userType 的值
+            //var activateProjectSelect = document.getElementById('activate_project');
+            //var activateProjectListSelect= document.getElementById('activate_project_list');
+
+            //if (userType === 1) {
+                //activateProjectSelect.style.display = 'block'; // 顯示 projectSelect_2
+                //activateProjectListSelect.style.display = 'none'; // 隱藏 projectSelect_3
+            //} else {
+                //activateProjectSelect.style.visibility = 'hidden'; // 隱藏 projectSelect_2
+                //activateProjectListSelect.style.display = 'block'; // 顯示 projectSelect_3
+            //}
+
+
+        }
+
+    });
+
+    //=================================================================
+    function goFullscreen() {
+        var elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            });
+        } else if (elem.webkitRequestFullscreen) { /* Safari */
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) { /* IE11 */
+            elem.msRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) { /* Firefox */
+            elem.mozRequestFullScreen();
+        }
+    }
+
+    
+
+</script>
+
+
+</body>
+</html>
